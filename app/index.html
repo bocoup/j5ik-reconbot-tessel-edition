@@ -133,15 +133,15 @@
     var PAD40 = 40;
     var PAD60 = 60;
 
-    var MIN_GUTTER_WIDTH = 50;
-    var MAX_SPEED = 100;
+    var MIN = 50;
+    var MAX = 100;
 
     // Program setup
     var socket = io();
-    var canvas = document.getElementById("touch");
+    var touch = document.getElementById("touch");
     var toggler = document.getElementById("toggler");
     var rover = document.querySelector(".controls.rover");
-    var context = canvas.getContext("2d");
+    var context = touch.getContext("2d");
 
     var inVerticalLock = true;
     var inHorizontalLock = true;
@@ -237,24 +237,25 @@
       rover.transmit({ axis: deadZone });
     });
 
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
-    canvas.addEventListener("pointerleave", onPointerUp);
+    touch.addEventListener("pointermove", onPointerMove);
+    touch.addEventListener("pointerdown", onPointerDown);
+    touch.addEventListener("pointerup", onPointerUp);
+    touch.addEventListener("pointercancel", onPointerUp);
+    touch.addEventListener("pointerleave", onPointerUp);
 
     window.onorientationchange = resizeCanvas;
     window.onresize = resizeCanvas;
 
+
     function resizeCanvas() {
-      canvas.width = rover.clientWidth;
-      canvas.height = rover.clientHeight;
+      touch.width = rover.clientWidth;
+      touch.height = rover.clientHeight;
       window.scrollTo(0, 0);
     }
 
     function draw() {
-      var cW = canvas.width;
-      var cH = canvas.height;
+      var cW = touch.width;
+      var cH = touch.height;
       var cX = cW / 2;
       var cY = cH / 2;
       var cR = cX / 3;
@@ -378,20 +379,20 @@
         y = pointer.y;
 
         // Disallow moving out of the control box
-        if (x > canvas.width - MIN_GUTTER_WIDTH) {
-          x = canvas.width - MIN_GUTTER_WIDTH;
+        if (x > touch.width - MIN) {
+          x = touch.width - MIN;
         }
 
-        if (x < MIN_GUTTER_WIDTH) {
-          x = MIN_GUTTER_WIDTH;
+        if (x < MIN) {
+          x = MIN;
         }
 
-        if (y > canvas.height - MIN_GUTTER_WIDTH) {
-          y = canvas.height - MIN_GUTTER_WIDTH;
+        if (y > touch.height - MIN) {
+          y = touch.height - MIN;
         }
 
-        if (y < MIN_GUTTER_WIDTH) {
-          y = MIN_GUTTER_WIDTH;
+        if (y < MIN) {
+          y = MIN;
         }
 
         if (pointer.x === 0 && pointer.y === 0) {
@@ -416,7 +417,7 @@
       var left = getComputedStyle(event.target.parentElement).left;
 
       if (left === "auto") {
-        left = window.innerWidth - canvas.width;
+        left = window.innerWidth - touch.width;
       }
 
       return event.clientX - parseInt(left, 10);
@@ -424,7 +425,7 @@
 
     function onPointerDown(event) {
       var x = leftCompensation(event);
-      var y = event.clientY - (window.innerHeight - canvas.height);
+      var y = event.clientY - (window.innerHeight - touch.height);
 
       if (event.pointerId) {
         pointer = {
@@ -438,13 +439,13 @@
 
     function onPointerMove(event) {
       var x = leftCompensation(event);
-      var y = event.clientY - (window.innerHeight - canvas.height);
+      var y = event.clientY - (window.innerHeight - touch.height);
 
       if (pointer && pointer.pointerId) {
-        // W - MIN_GUTTER_WIDTH
-        // H - MIN_GUTTER_WIDTH
-        axis.x = constrain(scale(x, MIN_GUTTER_WIDTH, canvas.width - MIN_GUTTER_WIDTH, -MAX_SPEED, MAX_SPEED), -MAX_SPEED, MAX_SPEED);
-        axis.y = constrain(scale(y, MIN_GUTTER_WIDTH, canvas.height - MIN_GUTTER_WIDTH, -MAX_SPEED, MAX_SPEED), -MAX_SPEED, MAX_SPEED);
+        // W - MIN
+        // H - MIN
+        axis.x = constrain(scale(x, MIN, touch.width - MIN, -MAX, MAX), -MAX, MAX);
+        axis.y = constrain(scale(y, MIN, touch.height - MIN, -MAX, MAX), -MAX, MAX);
 
         axis.y *= -1;
         pointer.x = x;
