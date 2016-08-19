@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Reconbot Controls</title>
+  <style type="text/css">
+    * {
+      -webkit-box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box;
+      -webkit-touch-callout: none;
+      -webkit-text-size-adjust: none;
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      margin: 0px;
+      height: 100%;
+      position: relative;
+    }
+
+    body {
+      overflow: auto;
+    }
+
+    canvas {
+      display: block;
+      position: absolute;
+    }
+
+/*    #control-container {
+      width: 100%;
+      z-index: 5;
+      position: absolute;
+    }
+*/
+    #video-stream {
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      z-index: 4;
+    }
+
+    #video-stream img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: auto;
+      min-width: 50%;
+      min-height: 50%;
+      z-index: 0;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .controls {
+      position: fixed;
+      width: 300px;
+      height: 300px;
+      z-index: 10;
+      right: 0;
+      bottom: 0;
+    }
+
+    .controls.rover {
+      z-index: 10;
+      bottom: 0;
+    }
+
+    .controls.rover.left {
+      left: 0;
+    }
+    .controls.rover.right {
+      right: 0;
+    }
+
+    #toggler {
+      z-index: 20;
+    }
+
+    #toggler button {
+      position: absolute;
+      -webkit-text-fill-color: silver;
+      -webkit-text-stroke-color: black;
+      -webkit-text-stroke-width: 3px;
+      text-fill-color: silver;
+      text-stroke-color: black;
+      text-stroke-width: 3px;
+      font-size: 3rem;
+      border: 0;
+      background-color: transparent;
+      z-index: 20;
+    }
+
+    #toggler button.left {
+      left: 0;
+    }
+    #toggler button.right {
+      right: 0;
+    }
+    #toggler button.left::before {
+      content: "❮";
+    }
+    #toggler button.right::before {
+      content: "❯";
+    }
+  </style>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/pep.js"></script>
+  <script src="/screenfull.js"></script>
+</head>
+<body>
+  <div id="toggler">
+    <button class="left"></button>
+    <button class="right"></button>
+  </div>
+  <div class="controls rover right" touch-action="none">
+    <canvas id="touch"></canvas>
+  </div>
+  <div class="container" id="video-stream">
+    <img src="/video" id="stream">
+  </div>
+  <script>
+    // const-like things...
+    var PAD20 = 20;
+    var PAD40 = 40;
+    var PAD60 = 60;
+
+    var MIN_GUTTER_WIDTH = 50;
+    var MAX_SPEED = 100;
+
+    // Program setup
+    var socket = io();
+    var canvas = document.getElementById("touch");
+    var toggler = document.getElementById("toggler");
+    var rover = document.querySelector(".controls.rover");
+    var context = canvas.getContext("2d");
+
+    var inVerticalLock = true;
+    var inHorizontalLock = true;
+    var pointer = {
+      x: 0, // -1...1
+      y: 0, // -1...1
+    };
+    var previous = {
+      x: 0, // -1...1
+      y: 0, // -1...1
+    };
+    var axis = {
+      x: 0, // -1...1
+      y: 0, // -1...1
+    };
+    var deadZone = {
+      x: 0,
+      y: 0,
+    };
+
+    function transmit(data) {
+      if (socket.connected) {
+        socket.emit("remote-control", data);
+      }
+    }
+
+    rover.transmit = function() {
+      var now = Date.now();
+      var canTransmit = false;
+      var roundAxis = {};
+
+      // Throttle drive control transmission down to 20Hz
+      if (pointer !== null) {
+        if (Math.abs(axis.x) < 10 && Math.abs(axis.y) < 10) {
+          transmit({ axis: deadZone });
+        } else {
+          if (axis.x !== previous.x || axis.y !== previous.y) {
+            if (axis.x >= (previous.x + 10) ||
+                axis.x <= (previous.x - 10)) {
+              canTransmit = true;
+            }
+
+            if (axis.y >= (previous.y + 10) ||
+                axis.y <= (previous.y - 10)) {
+              canTransmit = true;
+            }
+
+            if (canTransmit) {
+              Object.assign(previous, axis, roundAxis);
+
+              roundAxis.x = Math.round(axis.x / 10) * 10;
+              roundAxis.y = Math.round(axis.y / 10) * 10;
+
+              // Last filter checks for lock paths
+              if (inVerticalLock) {
+                roundAxis.x = 0;
+              } else {
+                // roundAxis.x -= 20;
+              }
+
+              if (inHorizontalLock) {
+                roundAxis.y = 0;
+              } else {
+                // roundAxis.y -= 20;
+              }
+
+              transmit({ axis: roundAxis });
+            }
+          }
+        }
+      }
+    };
+
+    toggler.addEventListener("click", function(event) {
+      var toLeft = event.target.classList.contains("left");
+      var toRight = event.target.classList.contains("right");
+      var isLefty = rover.classList.contains("left");
+      var isRighty = rover.classList.contains("right");
+
+      if (toLeft && !isLefty) {
+        rover.classList.add("left");
+        rover.classList.remove("right");
+      }
+
+      if (toRight && !isRighty) {
+        rover.classList.remove("left");
+        rover.classList.add("right");
+      }
+    });
+
+    rover.addEventListener("pointermove", rover.transmit);
+    rover.addEventListener("pointerup", function() {
+      rover.transmit({ axis: deadZone });
+    });
+
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerdown", onPointerDown);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerUp);
+    canvas.addEventListener("pointerleave", onPointerUp);
+
+    window.onorientationchange = resizeCanvas;
+    window.onresize = resizeCanvas;
+
+    function resizeCanvas() {
+      canvas.width = rover.clientWidth;
+      canvas.height = rover.clientHeight;
+      window.scrollTo(0, 0);
+    }
+
+    function draw() {
+      var cW = canvas.width;
+      var cH = canvas.height;
+      var cX = cW / 2;
+      var cY = cH / 2;
+      var cR = cX / 3;
+
+      var cPaddedWidth = cW - PAD40;
+      var cPaddedHeight = cH - PAD40;
+
+      var x, y;
+
+      context.clearRect(0, 0, cW, cH);
+
+      // Triangles
+      context.beginPath();
+      context.strokeStyle = "black";
+      context.fillStyle = "black";
+      context.lineWidth = 1;
+
+      // TOP
+      context.moveTo(cX - PAD40, PAD60);
+      context.lineTo(cX + PAD40, PAD60);
+      context.lineTo(cX, PAD20);
+      context.stroke();
+
+      // RIGHT
+      context.moveTo(cW - PAD20, cY);
+      context.lineTo(cW - PAD60, cY - PAD40);
+      context.lineTo(cW - PAD60, cY + PAD40);
+
+      // BOTTOM
+      context.moveTo(cX - PAD40, cH - PAD60);
+      context.lineTo(cX + PAD40, cH - PAD60);
+      context.lineTo(cX, cH - PAD20);
+
+      // LEFT
+      context.moveTo(PAD20, cY);
+      context.lineTo(PAD60, cY - PAD40);
+      context.lineTo(PAD60, cY + PAD40);
+
+      context.fill();
+      context.closePath();
+
+
+      // Determine vertical and horizontal
+      // virtual stick "Lock Zones"
+
+      // inVerticalLock
+      context.beginPath();
+      context.strokeStyle = "rgba(0,0,0,0)";
+      context.lineWidth = 1;
+
+      // TOP
+      context.moveTo(cX + PAD40, 0);
+      context.lineTo(cX + PAD20, cY);
+      context.lineTo(cX - PAD20, cY);
+      context.lineTo(cX - PAD40, 0);
+      context.lineTo(cX + PAD40, 0);
+
+      // BOTTOM
+      context.moveTo(cX - PAD40, cH);
+      context.lineTo(cX - PAD20, cY);
+      context.lineTo(cX + PAD20, cY);
+      context.lineTo(cX + PAD40, cH);
+      context.lineTo(cX - PAD40, cH);
+
+      context.closePath();
+      context.stroke();
+
+      if (pointer && pointer.pointerId) {
+        inVerticalLock = context.isPointInPath(pointer.x, pointer.y);
+        if (inVerticalLock) {
+          pointer.x = cX;
+        }
+      }
+
+      // inHorizontalLock
+      context.beginPath();
+      // LEFT
+      context.moveTo(0, cY - PAD40);
+      context.lineTo(cX, cY - PAD20);
+      context.lineTo(cX, cY + PAD20);
+      context.lineTo(0, cY + PAD40);
+      context.lineTo(0, cY - PAD40);
+
+      // RIGHT
+      context.moveTo(cW, cY + PAD40);
+      context.lineTo(cX, cY + PAD20);
+      context.lineTo(cX, cY - PAD20);
+      context.lineTo(cW, cY - PAD40);
+      context.lineTo(cW, cY + PAD40);
+
+      context.closePath();
+      context.stroke();
+
+      if (pointer && pointer.pointerId) {
+        inHorizontalLock = context.isPointInPath(pointer.x, pointer.y);
+        if (inHorizontalLock) {
+          pointer.y = cY;
+        }
+      }
+      // End Lock Zones
+
+
+      // Thumb Stick Background
+      context.beginPath();
+      context.strokeStyle = "black";
+      context.lineWidth = (cW / 10) / 2;
+      context.arc(cX, cY, cR, 0, Math.PI * 2, true);
+      context.fill();
+      context.stroke();
+      context.closePath();
+
+
+      // Thumb Stick
+      context.beginPath();
+      context.strokeStyle = "black";
+      context.fillStyle = "silver";
+      context.lineWidth = (cW / 10) / 2;
+
+      if (pointer && pointer.pointerId) {
+        x = pointer.x;
+        y = pointer.y;
+
+        // Disallow moving out of the control box
+        if (x > canvas.width - MIN_GUTTER_WIDTH) {
+          x = canvas.width - MIN_GUTTER_WIDTH;
+        }
+
+        if (x < MIN_GUTTER_WIDTH) {
+          x = MIN_GUTTER_WIDTH;
+        }
+
+        if (y > canvas.height - MIN_GUTTER_WIDTH) {
+          y = canvas.height - MIN_GUTTER_WIDTH;
+        }
+
+        if (y < MIN_GUTTER_WIDTH) {
+          y = MIN_GUTTER_WIDTH;
+        }
+
+        if (pointer.x === 0 && pointer.y === 0) {
+          context.arc(cX, cY, cR, 0, Math.PI * 2, true);
+        } else {
+          context.arc(x, y, cR, 0, Math.PI * 2, true);
+        }
+
+      } else {
+        context.arc(cX, cY, cR, 0, Math.PI * 2, true);
+      }
+
+      context.stroke();
+      context.fill();
+
+      requestAnimationFrame(draw);
+    }
+
+
+    function leftCompensation(event) {
+      var parent = event.target.parentElement;
+      var left = getComputedStyle(event.target.parentElement).left;
+
+      if (left === "auto") {
+        left = window.innerWidth - canvas.width;
+      }
+
+      return event.clientX - parseInt(left, 10);
+    }
+
+    function onPointerDown(event) {
+      var x = leftCompensation(event);
+      var y = event.clientY - (window.innerHeight - canvas.height);
+
+      if (event.pointerId) {
+        pointer = {
+          x: x,
+          y: y,
+          pointerType: event.pointerType,
+          pointerId: event.pointerId
+        };
+      }
+    }
+
+    function onPointerMove(event) {
+      var x = leftCompensation(event);
+      var y = event.clientY - (window.innerHeight - canvas.height);
+
+      if (pointer && pointer.pointerId) {
+        // W - MIN_GUTTER_WIDTH
+        // H - MIN_GUTTER_WIDTH
+        axis.x = constrain(scale(x, MIN_GUTTER_WIDTH, canvas.width - MIN_GUTTER_WIDTH, -MAX_SPEED, MAX_SPEED), -MAX_SPEED, MAX_SPEED);
+        axis.y = constrain(scale(y, MIN_GUTTER_WIDTH, canvas.height - MIN_GUTTER_WIDTH, -MAX_SPEED, MAX_SPEED), -MAX_SPEED, MAX_SPEED);
+
+        axis.y *= -1;
+        pointer.x = x;
+        pointer.y = y;
+      } else {
+        axis = Object.assign({}, deadZone);
+      }
+    }
+
+    function onPointerUp(event) {
+      pointer = null;
+
+      if (event.type !== "pointerleave") {
+        transmit({ axis: deadZone });
+      }
+    }
+
+    function scale(value, fromLow, fromHigh, toLow, toHigh) {
+      return ((value - fromLow) * (toHigh - toLow) / (fromHigh - fromLow) + toLow) | 0;
+    }
+
+    function constrain(value, lower, upper) {
+      return Math.min(upper, Math.max(lower, value));
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      resizeCanvas();
+      requestAnimationFrame(draw);
+    });
+  </script>
+</body>
+</html>
