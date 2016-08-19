@@ -65,7 +65,7 @@ board.on("ready", () => {
   });
 
   server.then(() => {
-    console.log(`http://${os.hostname()}:${port}`);
-    console.log(`http://${os.networkInterfaces().wlan0[0].address}:${port}`);
+    console.log(`http://${os.hostname()}.local`);
+    console.log(`http://${os.networkInterfaces().wlan0[0].address}`);
   });
 });
