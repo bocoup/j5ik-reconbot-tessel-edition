@@ -15,6 +15,7 @@ const io = require("socket.io")(http);
 const five = require("johnny-five");
 const Tessel = require("tessel-io");
 const Rover = require("./lib/rover");
+const video = path.join(__dirname, "video.sh");
 
 // Configure express application server:
 app.use(express.static(path.join(__dirname, "app")));
@@ -22,11 +23,18 @@ app.get("/video", (req, res) => {
   res.redirect(`http://${req.hostname}:8080/?action=stream`);
 });
 
-// Spawn the video stream
-const mjpeg = cp.spawn(path.join(__dirname, "video.sh"));
+
+// Set permissions and spawn the video stream
+cp.exec(`chmod +x ${video}`, (error) => {
+  if (error) {
+    console.log(`Error setting permissions: ${error.toString()}`);
+    return;
+  }
+  cp.spawn(video);
+});
 
 // Start the HTTP Server
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 80;
 const server = new Promise(resolve => {
   http.listen(port, () => {
     resolve();

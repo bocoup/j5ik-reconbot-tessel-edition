@@ -3,9 +3,6 @@
   "version": "0.0.1",
   "description": "Reconbot: Tessel 2 Edition",
   "main": "index.js",
-  "scripts": {
-    "postinstall": "chmod +x video.sh"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",
