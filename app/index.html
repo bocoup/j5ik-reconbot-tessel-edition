@@ -128,8 +128,8 @@
     var PAD40 = 40;
     var PAD60 = 60;
 
-    var MIN = 50;
-    var MAX = 100;
+    var PADDING = 50;
+    var MIN_MAX = 100;
 
     // Program setup
     var socket = io();
@@ -374,20 +374,20 @@
         y = pointer.y;
 
         // Disallow moving out of the control box
-        if (x > touch.width - MIN) {
-          x = touch.width - MIN;
+        if (x > touch.width - PADDING) {
+          x = touch.width - PADDING;
         }
 
-        if (x < MIN) {
-          x = MIN;
+        if (x < PADDING) {
+          x = PADDING;
         }
 
-        if (y > touch.height - MIN) {
-          y = touch.height - MIN;
+        if (y > touch.height - PADDING) {
+          y = touch.height - PADDING;
         }
 
-        if (y < MIN) {
-          y = MIN;
+        if (y < PADDING) {
+          y = PADDING;
         }
 
         if (pointer.x === 0 && pointer.y === 0) {
@@ -437,10 +437,10 @@
       var y = event.clientY - (window.innerHeight - touch.height);
 
       if (pointer && pointer.pointerId) {
-        // W - MIN
-        // H - MIN
-        axis.x = constrain(scale(x, MIN, touch.width - MIN, -MAX, MAX), -MAX, MAX);
-        axis.y = constrain(scale(y, MIN, touch.height - MIN, -MAX, MAX), -MAX, MAX);
+        // W - PADDING
+        // H - PADDING
+        axis.x = constrain(scale(x, PADDING, touch.width - PADDING, -MIN_MAX, MIN_MAX), -MIN_MAX, MIN_MAX);
+        axis.y = constrain(scale(y, PADDING, touch.height - PADDING, -MIN_MAX, MIN_MAX), -MIN_MAX, MIN_MAX);
 
         axis.y *= -1;
         pointer.x = x;
