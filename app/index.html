@@ -194,13 +194,17 @@
               if (inVerticalLock) {
                 roundAxis.x = 0;
               } else {
-                // roundAxis.x -= 20;
+                // Slow down the turns...
+                // This might need a bit of tweaking
+                roundAxis.x -= 20;
               }
 
               if (inHorizontalLock) {
                 roundAxis.y = 0;
               } else {
-                // roundAxis.y -= 20;
+                // Slow down the turns...
+                // This might need a bit of tweaking
+                roundAxis.y -= 20;
               }
 
               transmit({ axis: roundAxis });

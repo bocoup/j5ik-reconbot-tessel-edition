@@ -2,29 +2,22 @@
 
 // Built-in Dependencies
 const cp = require("child_process");
+const Server = require("http").Server;
 const os = require("os");
 const path = require("path");
 
 // Third Party Dependencies
 const express = require("express");
-const app = express();
-const http = require("http").Server(app);
-const io = require("socket.io")(http);
+const five = require("johnny-five");
+const Socket = require("socket.io");
+const Tessel = require("tessel-io");
 
 // Internal/Application Dependencies
-const five = require("johnny-five");
-const Tessel = require("tessel-io");
 const Rover = require("./lib/rover");
-const video = path.join(__dirname, "video.sh");
 
-// Configure express application server:
-app.use(express.static(path.join(__dirname, "app")));
-app.get("/video", (req, res) => {
-  res.redirect(`http://${req.hostname}:8080/?action=stream`);
-});
-
-
+// Build an absolute path to video.sh
 // Set permissions and spawn the video stream
+const video = path.join(__dirname, "video.sh");
 cp.exec(`chmod +x ${video}`, (error) => {
   if (error) {
     console.log(`Error setting permissions: ${error.toString()}`);
@@ -33,13 +26,23 @@ cp.exec(`chmod +x ${video}`, (error) => {
   cp.spawn(video);
 });
 
+// Application, Server and Socket
+const app = express();
+const server = new Server(app);
+const socket = new Socket(server);
+
+// Configure express application server:
+app.use(express.static(path.join(__dirname, "app")));
+app.get("/video", (request, response) => {
+  response.redirect(`http://${req.hostname}:8080/?action=stream`);
+});
+
 // Start the HTTP Server
 const port = process.env.PORT || 80;
-const server = new Promise(resolve => {
-  http.listen(port, () => {
-    resolve();
-  });
+const listen = new Promise(resolve => {
+  server.listen(port, resolve);
 });
+
 
 // Initialize the Board
 const board = new five.Board({
@@ -57,15 +60,20 @@ board.on("ready", () => {
   ]);
 
   console.log("Reconbot(T2): Initialized");
-  io.on("connection", socket => {
+  socket.on("connection", connection => {
     console.log("Reconbot(T2): Controller Connected");
-    socket.on("remote-control", data => {
+    connection.on("remote-control", data => {
       rover.update(data.axis);
     });
   });
 
-  server.then(() => {
+  listen.then(() => {
     console.log(`http://${os.hostname()}.local`);
     console.log(`http://${os.networkInterfaces().wlan0[0].address}`);
+
+    process.on("SIGINT", () => {
+      server.close();
+      process.exit();
+    });
   });
 });
