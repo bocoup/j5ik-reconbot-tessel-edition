@@ -34,7 +34,7 @@ const socket = new Socket(server);
 // Configure express application server:
 app.use(express.static(path.join(__dirname, "app")));
 app.get("/video", (request, response) => {
-  response.redirect(`http://${req.hostname}:8080/?action=stream`);
+  response.redirect(`http://${request.hostname}:8080/?action=stream`);
 });
 
 // Start the HTTP Server
