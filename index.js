@@ -7,6 +7,7 @@ const os = require("os");
 const path = require("path");
 
 // Third Party Dependencies
+const av = require("tessel-av");
 const express = require("express");
 const five = require("johnny-five");
 const Socket = require("socket.io");
@@ -15,26 +16,20 @@ const Tessel = require("tessel-io");
 // Internal/Application Dependencies
 const Rover = require("./lib/rover");
 
-// Build an absolute path to video.sh
-// Set permissions and spawn the video stream
-const video = path.join(__dirname, "video.sh");
-cp.exec(`chmod +x ${video}`, (error) => {
-  if (error) {
-    console.log(`Error setting permissions: ${error.toString()}`);
-    return;
-  }
-  cp.spawn(video);
-});
-
-// Application, Server and Socket
+// Application, Server, Socket and video
 const app = express();
 const server = new Server(app);
 const socket = new Socket(server);
+const video = new av.Camera({
+  fps: 15,
+  dimensions: "320x240",
+  quality: 50,
+});
 
 // Configure express application server:
 app.use(express.static(path.join(__dirname, "app")));
 app.get("/video", (request, response) => {
-  response.redirect(`http://${request.hostname}:8080/?action=stream`);
+  response.redirect(`${video.url}`);
 });
 
 // Start the HTTP Server
@@ -72,6 +67,7 @@ board.on("ready", () => {
     console.log(`http://${os.networkInterfaces().wlan0[0].address}`);
 
     process.on("SIGINT", () => {
+      video.stop();
       server.close();
       process.exit();
     });
