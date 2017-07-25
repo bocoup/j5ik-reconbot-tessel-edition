@@ -7,9 +7,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.14.0",
-    "johnny-five": "^0.10.0",
-    "socket.io": "^1.4.8",
+    "express": "4.14.0",
+    "johnny-five": "latest",
+    "socket.io": "1.4.8",
     "tessel-av": "latest",
     "tessel-io": "latest"
   },
